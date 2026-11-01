@@ -12,11 +12,11 @@ meta_description: A hands-on test of the OpenSearch Prometheus integration. Foll
 excerpt: OpenSearch Dashboards can now query Prometheus with native PromQL, next to logs and traces stored in OpenSearch. I built a small lab, broke a service on purpose, and tried to find the cause without leaving OpenSearch Dashboards. Here is what worked, how the queries actually reach Prometheus, and two setup details to plan for.
 ---
 
-OpenSearch 3.5 added PromQL autocomplete and a metrics view in Discover. OpenSearch 3.7 added the native Prometheus integration, and OpenSearch 3.8 lets you create an alert rule from a PromQL query. Put together, the idea is that you can look at logs, traces, and metrics in one place, even though the metrics stay in Prometheus.
+If you keep metrics in Prometheus and logs and traces in OpenSearch, an incident usually means working in two UIs: you spot the latency spike in one, then search for the matching trace and error message in the other. OpenSearch Dashboards can now query Prometheus directly with PromQL, so you may not need to switch at all, and you don't have to move your metrics to find out.
 
-I wanted to see how well that works outside a demo, so I set up a small lab, broke one of its services on purpose, and tried to find the cause using only OpenSearch Dashboards. In this post, I'll walk through that investigation, show how a PromQL query gets from your browser to Prometheus, and share two setup details that are worth planning for.
+To see how well that works, I set up a small lab, broke one of its services on purpose, and tried to find the cause using only OpenSearch Dashboards. In this post, I'll walk through that investigation starting from a PromQL query, show how the query gets from your browser to Prometheus, and share two setup details that are worth planning for.
 
-All results come from OpenSearch 3.9.0, OpenSearch Dashboards 3.9.0, Data Prepper 2.16.0, Prometheus 3.15.1, and the OpenTelemetry Collector 0.164.0, running in Docker on a laptop. The full lab, including every configuration file, is available in the [`opensearch-prometheus-lab` repository](https://github.com/mohiadeen-ameer/opensearch-prometheus-lab).
+The features I used arrived over several releases: [metrics in Discover in OpenSearch 3.5](https://opensearch.org/blog/opensearch-3-5-is-live/), the [native Prometheus integration in 3.7](https://opensearch.org/blog/explore-opensearch-3-7/), and [alert rules from PromQL in 3.8](https://opensearch.org/blog/whats-new-in-opensearch-3-8/). All results come from OpenSearch 3.9.0, OpenSearch Dashboards 3.9.0, Data Prepper 2.16.0, Prometheus 3.15.1, and the OpenTelemetry Collector 0.164.0, running in Docker on a laptop. The full lab, including every configuration file, is available in the [`opensearch-prometheus-lab` repository](https://github.com/mohiadeen-ameer/opensearch-prometheus-lab).
 
 ## The lab: One Collector, two storage engines
 
@@ -95,9 +95,9 @@ Both Prometheus alerting rules in the lab fired within about two minutes (each r
 
 ![The Alerts page showing two active Prometheus alerts: CheckoutErrorRateHigh with critical severity and PaymentsLatencyHigh with medium severity.](/assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/prometheus-alerts.png)
 
-The **Routing** tab shows a read-only view of the Alertmanager routing tree, which helps you answer "who was notified?" without opening Alertmanager. The following image shows the lab's routing tree.
+The **Routing** tab shows a read-only view of the `Alertmanager` routing tree, which helps you answer "who was notified?" without opening `Alertmanager`. The following image shows the lab's routing tree.
 
-![The Routing tab showing the Alertmanager route tree with a catch-all receiver and an on-call receiver for critical alerts.](/assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/alertmanager-routing.png)
+![The Routing tab showing the alert route tree with a catch-all receiver and an on-call receiver for critical alerts.](/assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/alertmanager-routing.png)
 
 ### Step 3: Find the slow span
 
@@ -148,7 +148,7 @@ The following table lists the steady-state memory usage at 5 requests per second
 | OpenSearch Dashboards | 390 MB |
 | OpenTelemetry Collector | 135 MB |
 | Prometheus | 75 MB |
-| Alertmanager and the three demo services | 65 MB |
+| `Alertmanager` and the three demo services | 65 MB |
 
 At that point, OpenSearch held 18,500 spans (7 MB) and 7,300 log records (2.4 MB), and Prometheus held about 1,300 active series.
 

@@ -44,8 +44,6 @@ Go to https://github.com/opensearch-project/project-website/issues/new/choose â†
 
    > Adds a technical blog post testing the OpenSearch Prometheus integration (OpenSearch 3.9.0), with author profile
    > and images. Closes #<blog issue number>.
-   >
-   > Vale reports "Alertmanager" as a spelling error; it is the Prometheus product name.
 
 5. The marketing team may replace `meta_keywords` and `meta_description`, and the editorial team will review the
    text and set the final `date` (and rename the files to match).
