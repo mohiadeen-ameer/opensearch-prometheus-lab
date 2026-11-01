@@ -68,7 +68,7 @@ With traffic flowing, I made the card provider slow and unreliable:
 curl "localhost:8081/chaos?latency_ms=700&error_rate=0.25"
 ```
 
-The [Observability Stack blog post](https://opensearch.org/blog/single-pane-of-glass-for-all-your-telemetry-the-opensearch-observability-stack/) walks through a similar investigation that starts from the APM pages. Here, I start from a PromQL query instead, and every step stays inside one OpenSearch Dashboards workspace.
+I started from a PromQL query, and every step stayed inside one OpenSearch Dashboards workspace.
 
 ### Step 1: Spot the problem in metrics
 

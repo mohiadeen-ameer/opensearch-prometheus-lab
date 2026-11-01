@@ -13,11 +13,11 @@ breadcrumbs:
       url: /community/members/index.html
     - title: 'Mohiadeen Ameer&apos;s Profile'
       url: '/community/members/mohiadeen-ameer.html'
-job_title_and_company: 'TODO: your job title and company'
+job_title_and_company: 'Software Principal Engineer at Dell Technologies'
 personas:
   - author
 permalink: '/community/members/mohiadeen-ameer.html'
 github: mohiadeen-ameer
 ---
 
-**Mohiadeen Ameer** TODO: one or two sentences about your work and how you use OpenSearch, for example "is a software engineer who works on search and observability with OpenSearch, Prometheus, and OpenTelemetry."
+**Mohiadeen Ameer** is a Software Principal Engineer at Dell Technologies with an interest in search and observability on the OpenSearch platform.
