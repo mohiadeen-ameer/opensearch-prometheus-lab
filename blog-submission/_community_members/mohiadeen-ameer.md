@@ -20,4 +20,4 @@ permalink: '/community/members/mohiadeen-ameer.html'
 github: mohiadeen-ameer
 ---
 
-**Mohiadeen Ameer** is a Software Principal Engineer at Dell Technologies with an interest in search and observability on the OpenSearch platform.
+**Mohiadeen Ameer** is a Software Principal Engineer at Dell Technologies who works on distributed systems and Apache Kafka, with an interest in search and observability on the OpenSearch platform.
