@@ -47,7 +47,7 @@ Before running the investigation, I wanted to know which component talks to Prom
 
 ![Request path of a PromQL query: the browser calls OpenSearch Dashboards, which calls the OpenSearch direct query API, which calls the Prometheus HTTP API.](/assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/promql-request-path.png){:class="img-centered"}
 
-OpenSearch, not OpenSearch Dashboards, is the proxy. The Prometheus connection is stored in the OpenSearch SQL plugin's data source registry, which is why the cluster needs the `plugins.query.datasources.encryption.masterkey` setting: the connection properties are encrypted at rest. This design gives you one place to manage credentials and access.
+OpenSearch, not OpenSearch Dashboards, is the proxy. The Prometheus connection is stored in the OpenSearch SQL plugin's data source registry, which is why the cluster needs the `plugins.query.datasources.encryption.masterkey` setting: the plugin uses that key to encrypt stored data source credentials. This design gives you one place to manage the connection.
 
 You can call the same API yourself. The query is passed to Prometheus unchanged, so any expression that works in your recording rules works here:
 
@@ -56,7 +56,7 @@ curl -X POST localhost:9200/_plugins/_directquery/_query/lab_prometheus \
   -H 'Content-Type: application/json' -d '{
   "query": "sum by (result) (rate(shop_orders_total[1m]))",
   "language": "promql",
-  "options": { "queryType": "instant", "time": "1793555711" }
+  "options": { "queryType": "instant", "time": "'"$(date +%s)"'" }
 }'
 ```
 
@@ -140,9 +140,11 @@ These buckets add up exactly to `latency_seconds_count`, and the `+Inf` bucket i
 
 When buckets are not cumulative, Prometheus forces them to be monotonic by carrying the running maximum forward. The percentile then lands inside whichever bucket holds the most samples. In this case, that was the fast 25–50 ms bucket. Applying that rule by hand to the counts in the table gives 49.709 ms, which matches the APM page exactly.
 
-The practical effect is that the APM percentile is roughly correct when most requests are slow and wrong when only some requests are slow. Partial slowness is exactly the situation in which tail latency matters. The OpenTelemetry SDK histogram from the same requests, `http_server_request_duration_seconds_bucket`, is cumulative and reported the correct value.
+The practical effect is that the APM percentile is roughly correct when most requests are slow and wrong when only some requests are slow, which is when tail latency matters most. The OpenTelemetry SDK histogram from the same requests, `http_server_request_duration_seconds_bucket`, is cumulative and reported the expected value.
 
-Data Prepper maintainers have already addressed related Prometheus compatibility issues for these metrics in [data-prepper#6710](https://github.com/opensearch-project/data-prepper/issues/6710). Until percentiles are confirmed, I recommend using the SDK histograms for latency service-level objectives (SLOs) and alerts. Use the APM pages for the service map and error rates.
+The cause is in the Data Prepper `prometheus` sink, not in the APM pages. OTLP histograms carry per-bucket counts, and the sink wrote them to Prometheus without accumulating them, so any explicit-bucket histogram sent through the sink is affected. I reported this in [data-prepper#7232](https://github.com/opensearch-project/data-prepper/issues/7232) and opened a fix in [data-prepper#7233](https://github.com/opensearch-project/data-prepper/pull/7233). With the same change applied to Data Prepper 2.16.0 and a similar mix of fast and slow traffic, the `+Inf` bucket matched the total count, and the same p99 query returned 891 ms. The SDK histogram returned 941 ms; the two use different bucket boundaries, so a small gap is expected.
+
+Until a release includes the fix, I recommend using SDK histograms for latency service-level objectives (SLOs) and alerts. The APM pages' service map and error rates don't depend on these buckets.
 
 ### 2. Creating alert rules requires a Prometheus backend with a ruler API
 
@@ -179,6 +181,10 @@ The following table lists the steady-state memory usage at 5 requests per second
 
 At that point, OpenSearch held 18,500 spans (7 MB) and 7,300 log records (2.4 MB), and Prometheus held about 1,300 active series.
 
+## What I didn't test
+
+This was a small test, so treat these results as a starting point. The lab runs a single OpenSearch node with the Security plugin disabled, one Prometheus server, and only 5 requests per second. I didn't test authentication to Prometheus, high-availability or federated Prometheus setups, a ruler-enabled backend such as Cortex, or the service-level objective catalog.
+
 ## So, is it one engine?
 
 Not in this setup. OpenSearch doesn't store the metrics; it forwards PromQL to Prometheus and shows the results. I think that's a reasonable choice: my existing Prometheus rules kept working, and I didn't have to move any data.
@@ -204,7 +210,7 @@ Then open `http://localhost:5601`, select the **Shop observability** workspace, 
 Before you adopt the integration, check the following:
 
 - If you want to create alert rules from OpenSearch Dashboards, make sure your Prometheus backend provides a ruler API.
-- Compare APM percentiles with your SDK histograms.
+- Until the fix in data-prepper#7233 is released, compare APM percentiles with your SDK histograms.
 - Make sure that `service.name` is promoted to a Prometheus label so that you can correlate metrics with traces and logs.
 
 To learn more, see [Analyzing metrics in Discover](https://docs.opensearch.org/latest/observing-your-data/exploring-observability-data/discover-metrics/) and the [OpenSearch Observability Stack](https://opensearch.org/platform/observability-stack/). If you reproduce or extend these results, share them on the [OpenSearch forum](https://forum.opensearch.org/) or open an issue in the [lab repository](https://github.com/mohiadeen-ameer/opensearch-prometheus-lab).
