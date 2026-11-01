@@ -7,7 +7,7 @@ so they can be copied straight into a fork of it.
 | File | Goes to |
 | --- | --- |
 | `_posts/2026-11-01-testing-opensearch-prometheus-integration.md` | the post |
-| `assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/` | its 9 images |
+| `assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/` | its 8 images |
 | `_community_members/mohiadeen-ameer.md` | your author profile |
 | `assets/media/community/members/mohiadeen-ameer.jpg` | **you add this**: a square photo of yourself |
 
@@ -27,10 +27,9 @@ Go to https://github.com/opensearch-project/project-website/issues/new/choose â†
 - **Describe the blog post:** A hands-on test of the native Prometheus integration in OpenSearch 3.9. Using a
   reproducible Docker lab (Go services instrumented with OpenTelemetry, Data Prepper, Prometheus, Alertmanager), the
   post follows an injected incident from a PromQL chart in Discover Metrics to unified alerts, a trace waterfall, and
-  related logs. It explains how PromQL queries are proxied through the OpenSearch direct query API, and documents three
-  things to check before relying on it: APM latency percentiles computed from non-cumulative histogram buckets,
-  alert rule creation requiring a ruler API (Cortex, Mimir, or Amazon Managed Service for Prometheus), and field
-  refresh for datasets created using the API.
+  related logs. It explains how PromQL queries are proxied through the OpenSearch direct query API, and covers two
+  setup details: alert rule creation requiring a ruler API (Cortex, Mimir, or Amazon Managed Service for Prometheus), and
+  field refresh for datasets created using the API.
 - **Expected title:** One engine for logs, metrics, and traces? Testing the OpenSearch Prometheus integration
 - **Author's name:** Mohiadeen Ameer
 - **Author's email:** github.com/mohiadeen-ameer

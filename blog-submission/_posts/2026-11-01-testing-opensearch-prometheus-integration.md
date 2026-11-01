@@ -8,13 +8,13 @@ categories:
   - technical-posts
 has_science_table: true
 meta_keywords: OpenSearch Prometheus integration, PromQL in OpenSearch Dashboards, OpenSearch observability, Discover metrics, unified alerts, Alertmanager, OpenTelemetry, Data Prepper, APM, trace to logs correlation
-meta_description: A hands-on test of the OpenSearch Prometheus integration. Follow an injected incident from a PromQL chart to a trace and its logs, see how queries reach Prometheus, and learn three things to check before you rely on it.
-excerpt: OpenSearch Dashboards can now query Prometheus with native PromQL, next to logs and traces stored in OpenSearch. I built a small lab, broke a service on purpose, and tried to find the cause without leaving OpenSearch Dashboards. Here is what worked, how the queries actually reach Prometheus, and three things to check before you rely on it.
+meta_description: A hands-on test of the OpenSearch Prometheus integration. Follow an injected incident from a PromQL chart to a trace and its logs, see how queries reach Prometheus, and learn two setup details to plan for.
+excerpt: OpenSearch Dashboards can now query Prometheus with native PromQL, next to logs and traces stored in OpenSearch. I built a small lab, broke a service on purpose, and tried to find the cause without leaving OpenSearch Dashboards. Here is what worked, how the queries actually reach Prometheus, and two setup details to plan for.
 ---
 
 OpenSearch 3.5 added PromQL autocomplete and a metrics view in Discover. OpenSearch 3.7 added the native Prometheus integration, and OpenSearch 3.8 lets you create an alert rule from a PromQL query. Put together, the idea is that you can look at logs, traces, and metrics in one place, even though the metrics stay in Prometheus.
 
-I wanted to see how well that works outside a demo, so I set up a small lab, broke one of its services on purpose, and tried to find the cause using only OpenSearch Dashboards. In this post, I'll walk through that investigation, show how a PromQL query gets from your browser to Prometheus, and describe three problems I ran into.
+I wanted to see how well that works outside a demo, so I set up a small lab, broke one of its services on purpose, and tried to find the cause using only OpenSearch Dashboards. In this post, I'll walk through that investigation, show how a PromQL query gets from your browser to Prometheus, and share two setup details that are worth planning for.
 
 All results come from OpenSearch 3.9.0, OpenSearch Dashboards 3.9.0, Data Prepper 2.16.0, Prometheus 3.15.1, and the OpenTelemetry Collector 0.164.0, running in Docker on a laptop. The full lab, including every configuration file, is available in the [`opensearch-prometheus-lab` repository](https://github.com/mohiadeen-ameer/opensearch-prometheus-lab).
 
@@ -113,40 +113,11 @@ The **Related logs** tab on the same trace shows the log lines written during th
 
 So in four steps I got from a latency spike to the actual error message without opening another tool, and the metrics never left Prometheus. This part worked as advertised.
 
-## Three things to check before you rely on it
+## Two setup details to plan for
 
-Not everything went smoothly. These are the three problems I hit, with what caused them and how I worked around them.
+Two details took me some time to work out during setup, so here's what to expect.
 
-### 1. Check APM latency percentiles against your own histograms
-
-At the moment the PromQL chart showed about 750 ms, the **APM > Services** page reported a p99 latency of 50 ms for both services, as shown in the following image.
-
-![The APM Services page showing a p99 latency of 50 ms for both checkout and payments.](/assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/apm-services.png)
-
-To find out why, I recorded the PromQL that the APM page sends:
-
-```promql
-histogram_quantile(0.99, sum by (environment, service, le) (
-  sum_over_time(latency_seconds_bucket{remoteService="", namespace="span_derived"}[15m]))) * 1000
-```
-
-Then I looked at the `latency_seconds_bucket` series that Data Prepper had written for the `payments` service over the same 15 minutes:
-
-| Bucket boundary in seconds (`le`) | 0.025 | 0.05 | 0.075 | 0.1 | 0.25 | 0.5 | 0.75 | 1.0 | +Inf |
-| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Sample count | 209 | 1492 | 94 | 0 | 0 | 0 | 1081 | 45 | 0 |
-
-These buckets add up exactly to `latency_seconds_count`, and the `+Inf` bucket is 0. In other words, they are per-bucket counts. The Prometheus `histogram_quantile` function expects cumulative buckets, in which each bucket includes all smaller ones and `+Inf` equals the total.
-
-When buckets are not cumulative, Prometheus forces them to be monotonic by carrying the running maximum forward. The percentile then lands inside whichever bucket holds the most samples. In this case, that was the fast 25–50 ms bucket. Applying that rule by hand to the counts in the table gives 49.709 ms, which matches the APM page exactly.
-
-The practical effect is that the APM percentile is roughly correct when most requests are slow and wrong when only some requests are slow, which is when tail latency matters most. The OpenTelemetry SDK histogram from the same requests, `http_server_request_duration_seconds_bucket`, is cumulative and reported the expected value.
-
-The cause is in the Data Prepper `prometheus` sink, not in the APM pages. OTLP histograms carry per-bucket counts, and the sink wrote them to Prometheus without accumulating them, so any explicit-bucket histogram sent through the sink is affected. I reported this in [data-prepper#7232](https://github.com/opensearch-project/data-prepper/issues/7232) and opened a fix in [data-prepper#7233](https://github.com/opensearch-project/data-prepper/pull/7233). With the same change applied to Data Prepper 2.16.0 and a similar mix of fast and slow traffic, the `+Inf` bucket matched the total count, and the same p99 query returned 891 ms. The SDK histogram returned 941 ms; the two use different bucket boundaries, so a small gap is expected.
-
-Until a release includes the fix, I recommend using SDK histograms for latency service-level objectives (SLOs) and alerts. The APM pages' service map and error rates don't depend on these buckets.
-
-### 2. Creating alert rules requires a Prometheus backend with a ruler API
+### Creating alert rules requires a Prometheus backend with a ruler API
 
 When you query a Prometheus data source with PromQL, the toolbar shows a **Create alert rule** action. Saving a rule sends the rule group to OpenSearch, which forwards it to the data source's ruler endpoint. Open-source Prometheus loads rules from files and has no API for writing them. Sending the same request directly returned the following error:
 
@@ -160,7 +131,7 @@ When you query a Prometheus data source with PromQL, the toolbar shows a **Creat
 
 Reading rules works: the **Alerts** and **Rules** tabs showed the lab's file-based rules. To create rules from OpenSearch Dashboards, use a backend that provides a ruler API, such as Cortex, Grafana Mimir, or Amazon Managed Service for Prometheus, and set it as `prometheus.ruler.uri` on the data source. The [OpenSearch Observability Stack](https://github.com/opensearch-project/observability-stack) uses Cortex for this reason.
 
-### 3. Refresh the field list of datasets that you create using the API
+### Refresh the field list of datasets that you create using the API
 
 I created the logs and traces datasets with the saved objects API. Discover opened them, but each page showed the error `Could not locate that index-pattern-field (id: time)`, and the **Related logs** tab returned no results.
 
@@ -191,7 +162,7 @@ Not in this setup. OpenSearch doesn't store the metrics; it forwards PromQL to P
 
 If you do want metrics stored in OpenSearch itself, the [Time-Series Database plugin](https://github.com/opensearch-project/time-series-db) and the Data Prepper `index_type: tsdb` sink option introduced in [Data Prepper 2.16](https://opensearch.org/blog/data-prepper-2-16/) are worth looking at. I haven't tested that option yet.
 
-If you already run Prometheus and OpenSearch side by side, the integration saves you from switching between two UIs, and it took me very little setup. Just check the three problems above before you depend on it.
+If you already run Prometheus and OpenSearch side by side, the integration saves you from switching between two UIs, and it took me very little setup. Just plan for the two setup details above.
 
 ## Next steps
 
@@ -210,7 +181,6 @@ Then open `http://localhost:5601`, select the **Shop observability** workspace, 
 Before you adopt the integration, check the following:
 
 - If you want to create alert rules from OpenSearch Dashboards, make sure your Prometheus backend provides a ruler API.
-- Until the fix in data-prepper#7233 is released, compare APM percentiles with your SDK histograms.
 - Make sure that `service.name` is promoted to a Prometheus label so that you can correlate metrics with traces and logs.
 
 To learn more, see [Analyzing metrics in Discover](https://docs.opensearch.org/latest/observing-your-data/exploring-observability-data/discover-metrics/) and the [OpenSearch Observability Stack](https://opensearch.org/platform/observability-stack/). If you reproduce or extend these results, share them on the [OpenSearch forum](https://forum.opensearch.org/) or open an issue in the [lab repository](https://github.com/mohiadeen-ameer/opensearch-prometheus-lab).

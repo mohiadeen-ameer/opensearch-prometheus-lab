@@ -65,7 +65,7 @@ docker compose down -v     # delete data too
 | Discover → **Traces** | filter `status.code = 2`, open a span, then the **Related logs** tab |
 | Discover → **Logs** | PPL: `source = logs-otel-v1* \| where severityText = 'ERROR' \| stats count() by resource.attributes.service.name` |
 | **Alerts** | Prometheus rules `CheckoutErrorRateHigh`, `PaymentsLatencyHigh`, plus the Alertmanager **Routing** tab |
-| **APM → Services** | service catalog with RED metrics (see the blog post for a caveat on percentiles) |
+| **APM → Services** | service catalog with RED metrics |
 
 The same PromQL from the command line, through OpenSearch:
 
