@@ -3,7 +3,7 @@
 A small, reproducible lab for testing OpenSearch's native Prometheus integration (OpenSearch 3.7+). Logs and traces
 are stored in OpenSearch, metrics are stored in Prometheus, and OpenSearch Dashboards queries all three from one UI.
 
-The write-up of what we found is in **[BLOG.md](BLOG.md)**.
+The write-up of what I found is the blog post in **[blog-submission/](blog-submission/_posts/2026-11-01-testing-opensearch-prometheus-integration.md)**, formatted for opensearch.org (see [SUBMIT.md](blog-submission/SUBMIT.md)).
 
 ```mermaid
 flowchart LR
@@ -65,7 +65,7 @@ docker compose down -v     # delete data too
 | Discover → **Traces** | filter `status.code = 2`, open a span, then the **Related logs** tab |
 | Discover → **Logs** | PPL: `source = logs-otel-v1* \| where severityText = 'ERROR' \| stats count() by resource.attributes.service.name` |
 | **Alerts** | Prometheus rules `CheckoutErrorRateHigh`, `PaymentsLatencyHigh`, plus the Alertmanager **Routing** tab |
-| **APM → Services** | service catalog with RED metrics (see the blog for a caveat on percentiles) |
+| **APM → Services** | service catalog with RED metrics (see the blog post for a caveat on percentiles) |
 
 The same PromQL from the command line, through OpenSearch:
 
