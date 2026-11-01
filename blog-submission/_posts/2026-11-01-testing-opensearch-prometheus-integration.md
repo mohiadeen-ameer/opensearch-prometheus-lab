@@ -12,7 +12,7 @@ meta_description: A hands-on test of the OpenSearch Prometheus integration. Foll
 excerpt: OpenSearch Dashboards can query Prometheus with PromQL next to logs and traces stored in OpenSearch. I broke a service in a small lab and tried to find the cause from one UI. Here is how the investigation went, how queries and access control work, and what to plan for during setup.
 ---
 
-On a previous project, I worked as a cloud architect on a validation platform for a large healthcare enterprise, and we consolidated several dashboards into one view using Prometheus and Grafana. What stayed with me was how much of an incident goes to moving between tools: you spot a latency spike in one place, then go looking for the matching trace and error message in another.
+On a previous project, I worked as a cloud architect on a validation platform for a large healthcare enterprise, and we migrated several separate dashboards for metrics, logs, traces, and validation status into one view using Prometheus and Grafana. What stayed with me was how much of an incident goes to moving between tools: you spot a latency spike in one place, then go looking for the matching trace and error message in another.
 
 OpenSearch Dashboards can now query Prometheus directly with PromQL, next to logs and traces stored in OpenSearch, and you don't have to move your metrics to try it. I wanted to see how far that gets you during an investigation. That earlier project didn't use OpenSearch, and everything in this post comes from a lab, not production.
 
