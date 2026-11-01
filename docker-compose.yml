@@ -1,0 +1,122 @@
+# One pane for logs, metrics and traces: OpenSearch stores logs + traces,
+# Prometheus stores metrics, and OpenSearch Dashboards queries both.
+# Lab only: security is disabled and everything is single-node.
+name: prom-lab
+
+services:
+  # ---- storage + UI ----
+  opensearch:
+    image: opensearchproject/opensearch:3.9.0
+    container_name: opensearch
+    environment:
+      - cluster.name=prom-lab
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      # Encrypts the Prometheus connection settings the SQL plugin stores.
+      - plugins.query.datasources.encryption.masterkey=0123456789abcdefABCDEFgh
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: curl -s localhost:9200/_cluster/health | grep -qE '"status":"(green|yellow)"'
+      start_period: 60s
+      interval: 5s
+      retries: 30
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:3.9.0
+    container_name: dashboards
+    environment:
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    volumes:
+      - ./config/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml:ro
+    ports:
+      - "5601:5601"
+    depends_on:
+      opensearch: { condition: service_healthy }
+
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-otlp-receiver          # Collector pushes app metrics here (/api/v1/otlp)
+      - --web.enable-remote-write-receiver  # Data Prepper pushes APM RED metrics here (/api/v1/write)
+      - --enable-feature=exemplar-storage   # keep trace IDs attached to histogram samples
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus-rules.yml:/etc/prometheus/rules.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.2
+    container_name: alertmanager
+    volumes:
+      - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+
+  # ---- pipeline ----
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.164.0
+    container_name: otel-collector
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./config/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
+  data-prepper:
+    image: opensearchproject/data-prepper:2.16.0
+    container_name: data-prepper
+    volumes:
+      - ./config/data-prepper/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml:ro
+      - ./config/data-prepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml:ro
+    depends_on:
+      opensearch: { condition: service_healthy }
+
+  # ---- demo app: same image, three roles ----
+  checkout:
+    build: ./app
+    image: prom-lab-shop
+    container_name: checkout
+    environment: &otel
+      ROLE: checkout
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_INSECURE: "true"
+    ports:
+      - "8080:8080"
+
+  payments:
+    image: prom-lab-shop
+    container_name: payments
+    environment:
+      <<: *otel
+      ROLE: payments
+    ports:
+      - "8081:8080"   # GET localhost:8081/chaos?latency_ms=800&error_rate=0.3
+    depends_on: [checkout]  # checkout builds the shared image
+
+  loadgen:
+    image: prom-lab-shop
+    container_name: loadgen
+    environment:
+      <<: *otel
+      ROLE: loadgen
+      RPS: "5"
+    depends_on: [checkout, payments]
+
+volumes:
+  opensearch-data:
+  prometheus-data:

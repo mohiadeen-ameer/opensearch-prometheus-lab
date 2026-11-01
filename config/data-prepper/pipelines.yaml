@@ -1,0 +1,76 @@
+# One OTLP entry point, split by signal type.
+#   logs   -> logs-otel-v1-*          (OpenSearch)
+#   spans  -> otel-v1-apm-span-*      (OpenSearch)
+#   spans  -> otel-v2-apm-service-map (OpenSearch) + RED metrics (Prometheus)
+otlp-pipeline:
+  source:
+    otlp:
+      port: 21890
+      ssl: false
+  route:
+    - logs: 'getEventType() == "LOG"'
+    - traces: 'getEventType() == "TRACE"'
+  sink:
+    - pipeline: { name: logs-pipeline, routes: [logs] }
+    - pipeline: { name: traces-pipeline, routes: [traces] }
+
+logs-pipeline:
+  source:
+    pipeline: { name: otlp-pipeline }
+  processor:
+    - copy_values:
+        entries:
+          - { from_key: time, to_key: "@timestamp" }
+  sink:
+    - opensearch:
+        hosts: ["http://opensearch:9200"]
+        index_type: log-analytics-plain
+
+traces-pipeline:
+  source:
+    pipeline: { name: otlp-pipeline }
+  sink:
+    - pipeline: { name: spans-pipeline }
+    - pipeline: { name: service-map-pipeline }
+
+spans-pipeline:
+  source:
+    pipeline: { name: traces-pipeline }
+  processor:
+    - otel_traces:
+  sink:
+    - opensearch:
+        hosts: ["http://opensearch:9200"]
+        index_type: trace-analytics-plain-raw
+
+# Builds the APM topology from span parent/child links and derives RED
+# metrics (rate, errors, duration) per service and operation.
+service-map-pipeline:
+  source:
+    pipeline: { name: traces-pipeline }
+  processor:
+    - otel_apm_service_map:
+        window_duration: 10s
+  route:
+    - topology: 'getEventType() == "SERVICE_MAP"'
+    - red: 'getEventType() == "METRIC"'
+  sink:
+    - opensearch:
+        hosts: ["http://opensearch:9200"]
+        index_type: otel-v2-apm-service-map
+        routes: [topology]
+    - pipeline: { name: red-metrics-pipeline, routes: [red] }
+
+red-metrics-pipeline:
+  source:
+    pipeline: { name: service-map-pipeline }
+  processor:
+    - delete_entries:   # per-event UUID label, would explode series cardinality
+        with_keys: ["/attributes/randomKey", "randomKey"]
+  sink:
+    - prometheus:
+        url: http://prometheus:9090/api/v1/write
+        insecure: true   # plain http inside the Docker network
+        threshold:
+          max_events: 500
+          flush_interval: 5s

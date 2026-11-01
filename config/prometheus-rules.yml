@@ -1,0 +1,24 @@
+groups:
+  - name: shop
+    rules:
+      - record: shop:checkout_error_ratio:rate1m
+        expr: |
+          sum(rate(shop_orders_total{result="failed"}[1m]))
+          / sum(rate(shop_orders_total[1m]))
+
+      - alert: CheckoutErrorRateHigh
+        expr: shop:checkout_error_ratio:rate1m > 0.05
+        for: 1m
+        labels: { severity: critical, service: checkout }
+        annotations:
+          summary: "More than 5% of checkouts are failing"
+
+      - alert: PaymentsLatencyHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le) (
+            rate(http_server_request_duration_seconds_bucket{service_name="payments"}[1m])
+          )) > 0.5
+        for: 1m
+        labels: { severity: warning, service: payments }
+        annotations:
+          summary: "payments p95 latency above 500ms"

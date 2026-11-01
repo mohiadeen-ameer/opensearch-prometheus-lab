@@ -1,0 +1,22 @@
+server.host: 0.0.0.0
+opensearch.hosts: ["http://opensearch:9200"]
+
+# The new observability experience lives in "workspaces"; Discover for
+# logs, traces and metrics is the "explore" plugin.
+workspace.enabled: true
+data_source.enabled: true
+datasetManagement.enabled: true
+explore.enabled: true
+explore.discoverTraces.enabled: true
+explore.discoverMetrics.enabled: true
+explore.logsQueryBuilder.enabled: true
+explore.sqlSupport.enabled: true
+data.savedQueriesNewUI.enabled: true
+
+# Shows Alertmanager routing + alerts, read from the Prometheus data source's alertmanager.uri.
+observability.alertManager.enabled: true
+
+uiSettings.overrides.home:useNewHomePage: true
+uiSettings.overrides.query:enhancements:enabled: true
+uiSettings.overrides.explore:experimental: true
+uiSettings.overrides.theme:darkMode: true

@@ -1,0 +1,9 @@
+route:
+  receiver: lab-null
+  group_by: [alertname, service]
+  routes:
+    - matchers: [severity="critical"]
+      receiver: oncall
+receivers:
+  - name: lab-null
+  - name: oncall   # no real integration; the routing tree still shows up in Dashboards
