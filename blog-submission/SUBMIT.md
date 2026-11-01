@@ -24,13 +24,8 @@ so they can be copied straight into a fork of it.
 
 Go to https://github.com/opensearch-project/project-website/issues/new/choose → **New blog post**:
 
-- **Describe the blog post:** A hands-on test of the native Prometheus integration in OpenSearch 3.9. Using a
-  reproducible Docker lab (Go services instrumented with OpenTelemetry, Data Prepper, Prometheus, Alertmanager), the
-  post follows an injected incident from a PromQL chart in Discover Metrics to unified alerts, a trace waterfall, and
-  related logs. It explains how PromQL queries are proxied through the OpenSearch direct query API, and covers two
-  setup details: alert rule creation requiring a ruler API (Cortex, Mimir, or Amazon Managed Service for Prometheus), and
-  field refresh for datasets created using the API.
-- **Expected title:** One engine for logs, metrics, and traces? Testing the OpenSearch Prometheus integration
+- **Describe the blog post:** A hands-on test of the Prometheus integration in OpenSearch 3.9, using a reproducible Docker lab. The post follows an injected fault from a PromQL query to alerts, a trace, and related logs, shows how PromQL reaches Prometheus, tests access control with the Security plugin enabled, and covers what to plan for during setup.
+- **Expected title:** One place to investigate logs, metrics, and traces: Testing the OpenSearch Prometheus integration
 - **Author's name:** Mohiadeen Ameer
 - **Author's email:** github.com/mohiadeen-ameer
 - **Category:** technical
