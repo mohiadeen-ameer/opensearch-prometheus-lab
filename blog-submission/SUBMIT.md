@@ -24,7 +24,7 @@ so they can be copied straight into a fork of it.
 
 Go to https://github.com/opensearch-project/project-website/issues/new/choose → **New blog post**:
 
-- **Describe the blog post:** A hands-on test of the Prometheus integration in OpenSearch 3.9, using a reproducible Docker lab. The post follows an injected fault from a PromQL query to alerts, a trace, and related logs, shows how PromQL reaches Prometheus, tests access control with the Security plugin enabled, and benchmarks the lab at 50 and 100 requests per second.
+- **Describe the blog post:** A hands-on test of the Prometheus integration in OpenSearch 3.9, using a reproducible Docker lab. The post follows an injected fault from a PromQL query to alerts, a trace, and related logs, shows how PromQL reaches Prometheus, tests access control with the Security plugin enabled, and benchmarks the lab at 100 requests per second.
 - **Expected title:** One place to investigate logs, metrics, and traces: Testing the OpenSearch Prometheus integration
 - **Author's name:** Mohiadeen Ameer
 - **Author's email:** github.com/mohiadeen-ameer
