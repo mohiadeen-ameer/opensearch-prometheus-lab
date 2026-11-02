@@ -9,14 +9,14 @@ categories:
 has_science_table: true
 meta_keywords: OpenSearch Prometheus integration, PromQL in OpenSearch Dashboards, OpenSearch observability, Discover metrics, unified alerts, Alertmanager, OpenTelemetry, Data Prepper, APM, trace to logs correlation
 meta_description: A hands-on test of the OpenSearch Prometheus integration. Follow an injected fault from a PromQL query to a trace and its logs, see how queries and access control work, and learn what to plan for during setup.
-excerpt: OpenSearch Dashboards can query Prometheus with PromQL next to logs and traces stored in OpenSearch. I cloned my setup into a small lab, broke a service, and tried to find the cause from one UI. Here is how the investigation went, how queries and access control work, and how the lab behaved at 100 requests per second.
+excerpt: OpenSearch Dashboards can query Prometheus with PromQL next to logs and traces stored in OpenSearch. I cloned my setup into a small lab, broke a service, and tried to find the cause from one UI. Here is how the investigation went, how queries and access control work, and what to plan for during setup.
 ---
 
 I worked as a cloud architect on a validation platform for a large healthcare enterprise, where we migrated several separate dashboards for metrics, logs, traces, and validation status into one view, and that work is now in production. What stayed with me was how much of an incident goes to moving between tools: you spot a latency spike in one place, then go looking for the matching trace and error message in another.
 
 OpenSearch Dashboards can query Prometheus directly with PromQL, next to logs and traces stored in OpenSearch, and you don't have to move your metrics to use it. I can't share that production environment, so I cloned the approach into a small lab that you can run yourself. Every number and screenshot in this post comes from that lab, not from production.
 
-The [OpenSearch 3.7 release post](https://opensearch.org/blog/explore-opensearch-3-7/) covers what the feature is. In this post, I'll focus on using it: I'll break a service on purpose and follow the fault from a PromQL query to a log line, trace how the query reaches Prometheus, test who can run it when the Security plugin is enabled, and benchmark the lab at 100 requests per second.
+The [OpenSearch 3.7 release post](https://opensearch.org/blog/explore-opensearch-3-7/) covers what the feature is. In this post, I'll focus on using it: I'll break a service on purpose and follow the fault from a PromQL query to a log line, trace how the query reaches Prometheus, test who can run it when the Security plugin is enabled, and share what to plan for during setup.
 
 All results come from OpenSearch 3.9.0, OpenSearch Dashboards 3.9.0, Data Prepper 2.16.0, Prometheus 3.15.1, and the OpenTelemetry Collector 0.164.0, running in Docker on a laptop. The full lab, including every configuration file, is available in the [`opensearch-prometheus-lab` repository](https://github.com/mohiadeen-ameer/opensearch-prometheus-lab).
 
@@ -145,39 +145,13 @@ This was my wrong turn. I created the logs and traces datasets with the saved ob
 
 Datasets created using the API start with an empty field list. The fix is to load the fields once with `GET /api/index_patterns/_fields_for_wildcard` and save them on the dataset. The lab's `setup.sh` script does this, so run it after data has started arriving.
 
-## Why not just use Grafana?
-
-Grafana can query both Prometheus and OpenSearch, and I've used it with Prometheus myself. If it works for you, I don't see a reason to switch because of this feature. The case for OpenSearch Dashboards is narrower: if you already run it for logs and traces, you can add metrics without running another UI, and trace-to-log navigation is already there. I didn't compare the two side by side, so this is my opinion rather than a benchmark.
-
-## Benchmarking the lab at 100 requests per second
-
-I ran the lab at 100 requests per second for 5 minutes with no injected fault, then sent 300 PromQL range queries at about 20 per second, once directly to Prometheus and once through OpenSearch. These numbers describe the whole lab on a laptop in a single run, so use them as a reference rather than as capacity guidance.
-
-| Measurement | Result |
-| :--- | ---: |
-| Measured request rate | 100.0/s |
-| `checkout` p95 latency | 49.4 ms |
-| Spans indexed | 402/s |
-| Log records indexed | 103/s |
-| Collector export failures and Data Prepper errors | 0 |
-| PromQL p50, direct to Prometheus | 3.9 ms |
-| PromQL p50, through OpenSearch | 7.9 ms |
-| PromQL p99, direct to Prometheus | 5.3 ms |
-| PromQL p99, through OpenSearch | 14.0 ms |
-| OpenSearch memory (1 GB heap) | 2,192 MiB |
-| Data Prepper memory | 989 MiB |
-| OpenTelemetry Collector memory | 188 MiB |
-| Prometheus memory | 178 MiB |
-
-Going through OpenSearch added about 4 ms at the median in this run. In other test runs at lower load, I occasionally saw bursts of queries through OpenSearch take about 10 seconds, with `SocketTimeoutException` in the OpenSearch log, while direct queries were unaffected. I haven't found the cause, so if you depend on dashboards through this path, measure it in your own environment.
-
 ## What I didn't test
 
-This was a small test, so treat these results as a starting point. The lab runs a single OpenSearch node and one Prometheus server, with one injected fault and at most 100 requests per second. I didn't test authentication to Prometheus, high-availability or federated Prometheus setups, a ruler-enabled backend, PromQL dashboards, or the service-level objective catalog.
+This was a small test, so treat these results as a starting point. The lab runs a single OpenSearch node and one Prometheus server, with one injected fault and steady, moderate traffic. I didn't run a performance benchmark. I didn't test authentication to Prometheus, high-availability or federated Prometheus setups, a ruler-enabled backend, PromQL dashboards, or the service-level objective catalog.
 
 ## One place to investigate, two places to store
 
-The surprise for me was how little changes on the Prometheus side. OpenSearch doesn't store these metrics; it forwards PromQL to Prometheus and shows the results next to your logs and traces. My Prometheus rules kept working, and I didn't move any data. I think that's the right starting point, because you can try it without committing to a migration.
+The surprise for me was how little changes on the Prometheus side. OpenSearch doesn't store these metrics; it forwards PromQL to Prometheus and shows the results next to your logs and traces. My Prometheus rules kept working, and I didn't move any data. I think that's the right starting point, because you can try it without committing to a migration. If you already run OpenSearch Dashboards for logs and traces, it also means one less UI to run for metrics.
 
 If you want metrics stored in OpenSearch itself, the [Time-Series Database plugin](https://github.com/opensearch-project/time-series-db) and the `index_type: tsdb` sink option in [Data Prepper 2.16](https://opensearch.org/blog/data-prepper-2-16/) are worth looking at. I haven't tested that option yet.
 
