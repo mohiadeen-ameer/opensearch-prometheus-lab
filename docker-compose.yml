@@ -114,7 +114,7 @@ services:
     environment:
       <<: *otel
       ROLE: loadgen
-      RPS: "5"
+      RPS: "${RPS:-50}"
     depends_on: [checkout, payments]
 
 volumes:

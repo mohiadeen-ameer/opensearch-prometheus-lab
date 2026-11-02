@@ -35,6 +35,12 @@ curl "localhost:8081/chaos?latency_ms=700&error_rate=0.25"   # slow, failing pay
 curl "localhost:8081/chaos"                                   # back to normal
 ```
 
+Change the load (default 50 requests per second):
+
+```bash
+RPS=100 docker compose up -d loadgen
+```
+
 Stop and clean up:
 
 ```bash
@@ -54,7 +60,7 @@ docker compose down -v     # delete data too
 | `data-prepper` | (internal) | writes spans and logs to OpenSearch; builds the service map and RED metrics |
 | `checkout` | 8080 | demo service: `GET /checkout` calls payments |
 | `payments` | 8081 | demo service: `POST /pay`; `GET /chaos` injects faults |
-| `loadgen` | (none) | 5 requests per second to checkout |
+| `loadgen` | (none) | 50 requests per second to checkout (set `RPS` to change it) |
 
 ## Things to try in Dashboards
 
@@ -87,6 +93,7 @@ curl -s -X POST localhost:9200/_plugins/_directquery/_query/lab_prometheus -H 'C
 | `config/alertmanager.yml` | a small routing tree so the Routing tab has something to show |
 | `config/opensearch_dashboards.yml` | turns on workspaces, the explore plugin (logs/traces/metrics) and Alertmanager view |
 | `setup.sh` | Prometheus data source, workspace, datasets (with field refresh), trace-to-logs and APM correlations |
+| `benchmark/` | `run.py` measures the lab at given request rates (`benchmark/run.py 50 100`); `results.json` is the latest run |
 | `app/` | the Go demo: `main.go` (3 roles), `telemetry.go` (OTel SDK setup) |
 
 ## Versions tested

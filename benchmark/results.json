@@ -1,0 +1,138 @@
+{
+ "50": {
+  "requested_rps": 50,
+  "seconds": 302,
+  "achieved_rps": 54.2,
+  "checkout_p95_ms": 49.6,
+  "spans_per_s": 230.9,
+  "logs_per_s": 57.4,
+  "store_mb_per_min": 5.3,
+  "prom_series": 1328.0,
+  "collector_failures": 0,
+  "dp_errors": 0,
+  "os_timeouts": 0,
+  "containers": {
+   "loadgen": {
+    "cpu_pct": 2.8,
+    "mem_mib": 15
+   },
+   "data-prepper": {
+    "cpu_pct": 2.5,
+    "mem_mib": 910
+   },
+   "dashboards": {
+    "cpu_pct": 0.1,
+    "mem_mib": 289
+   },
+   "payments": {
+    "cpu_pct": 2.9,
+    "mem_mib": 24
+   },
+   "prometheus": {
+    "cpu_pct": 0.8,
+    "mem_mib": 162
+   },
+   "alertmanager": {
+    "cpu_pct": 0.1,
+    "mem_mib": 47
+   },
+   "otel-collector": {
+    "cpu_pct": 0.4,
+    "mem_mib": 174
+   },
+   "opensearch": {
+    "cpu_pct": 4.4,
+    "mem_mib": 2166
+   },
+   "checkout": {
+    "cpu_pct": 4.2,
+    "mem_mib": 28
+   }
+  },
+  "query_direct_ms": {
+   "p50": 3.0,
+   "p95": 3.5,
+   "p99": 3.7,
+   "max": 4.7,
+   "over_1s": 0,
+   "failed": 0
+  },
+  "query_via_opensearch_ms": {
+   "p50": 6.8,
+   "p95": 10008.5,
+   "p99": 10012.7,
+   "max": 10013.2,
+   "over_1s": 21,
+   "failed": 0
+  },
+  "os_timeouts_during_queries": 12
+ },
+ "100": {
+  "requested_rps": 100,
+  "seconds": 303,
+  "achieved_rps": 100.0,
+  "checkout_p95_ms": 49.4,
+  "spans_per_s": 402.3,
+  "logs_per_s": 103.1,
+  "store_mb_per_min": 26.6,
+  "prom_series": 1328.0,
+  "collector_failures": 0,
+  "dp_errors": 0,
+  "os_timeouts": 0,
+  "containers": {
+   "loadgen": {
+    "cpu_pct": 5.7,
+    "mem_mib": 15
+   },
+   "data-prepper": {
+    "cpu_pct": 4.9,
+    "mem_mib": 989
+   },
+   "dashboards": {
+    "cpu_pct": 0.1,
+    "mem_mib": 289
+   },
+   "payments": {
+    "cpu_pct": 5.2,
+    "mem_mib": 25
+   },
+   "prometheus": {
+    "cpu_pct": 0.7,
+    "mem_mib": 178
+   },
+   "alertmanager": {
+    "cpu_pct": 0.1,
+    "mem_mib": 47
+   },
+   "otel-collector": {
+    "cpu_pct": 0.7,
+    "mem_mib": 188
+   },
+   "opensearch": {
+    "cpu_pct": 4.0,
+    "mem_mib": 2192
+   },
+   "checkout": {
+    "cpu_pct": 8.1,
+    "mem_mib": 29
+   }
+  },
+  "query_direct_ms": {
+   "p50": 3.9,
+   "p95": 4.9,
+   "p99": 5.3,
+   "max": 6.7,
+   "over_1s": 0,
+   "failed": 0
+  },
+  "query_via_opensearch_ms": {
+   "p50": 7.9,
+   "p95": 10.1,
+   "p99": 14.0,
+   "max": 725.7,
+   "over_1s": 0,
+   "failed": 0
+  },
+  "os_timeouts_during_queries": 0
+ }
+}
