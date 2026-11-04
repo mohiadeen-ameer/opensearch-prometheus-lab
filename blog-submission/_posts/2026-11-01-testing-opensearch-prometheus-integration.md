@@ -8,15 +8,13 @@ categories:
   - technical-posts
 has_science_table: true
 meta_keywords: OpenSearch Prometheus integration, PromQL in OpenSearch Dashboards, OpenSearch observability, Discover metrics, unified alerts, Alertmanager, OpenTelemetry, Data Prepper, APM, trace to logs correlation
-meta_description: A hands-on test of the OpenSearch Prometheus integration. Follow an injected fault from a PromQL query to a trace and its logs, see how queries and access control work, and learn what to plan for during setup.
-excerpt: OpenSearch Dashboards can query Prometheus with PromQL next to logs and traces stored in OpenSearch. I cloned my setup into a small lab, broke a service, and tried to find the cause from one UI. Here is how the investigation went, how queries and access control work, and what to plan for during setup.
+meta_description: A hands-on test of the OpenSearch Prometheus integration. Follow an injected fault from a PromQL query to a trace and its logs, see how queries and access control work, and avoid two setup problems.
+excerpt: OpenSearch Dashboards can query Prometheus with PromQL next to logs and traces stored in OpenSearch. I built a small lab, broke a service, and tried to find the cause from one UI. Here is how the investigation went, how queries and access control work, and two setup steps that cost me time.
 ---
 
-I worked as a cloud architect on a validation platform for a large healthcare enterprise, where we migrated several separate dashboards for metrics, logs, traces, and validation status into one view, and that work is now in production. What stayed with me was how much of an incident goes to moving between tools: you spot a latency spike in one place, then go looking for the matching trace and error message in another.
+Much of an incident goes to moving between tools: you spot a latency spike in one place, then go looking for the matching trace and error message in another. OpenSearch Dashboards can now query Prometheus directly with PromQL, next to logs and traces stored in OpenSearch, and you don't have to move your metrics to use it. To see how well that works, I built a small lab that mimics a common setup: Prometheus for metrics, and OpenSearch for logs and traces.
 
-OpenSearch Dashboards can query Prometheus directly with PromQL, next to logs and traces stored in OpenSearch, and you don't have to move your metrics to use it. I can't share that production environment, so I cloned the approach into a small lab that you can run yourself. Every number and screenshot in this post comes from that lab, not from production.
-
-The [OpenSearch 3.7 release post](https://opensearch.org/blog/explore-opensearch-3-7/) covers what the feature is. In this post, I'll focus on using it: I'll break a service on purpose and follow the fault from a PromQL query to a log line, trace how the query reaches Prometheus, test who can run it when the Security plugin is enabled, and share what to plan for during setup.
+The [OpenSearch 3.7 release post](https://opensearch.org/blog/explore-opensearch-3-7/) covers what the feature is. In this post, I'll focus on using it: I'll break a service on purpose and follow the fault from a PromQL query to a log line, trace how the query reaches Prometheus, test who can run it when the Security plugin is enabled, and describe two setup steps that cost me time.
 
 All results come from OpenSearch 3.9.0, OpenSearch Dashboards 3.9.0, Data Prepper 2.16.0, Prometheus 3.15.1, and the OpenTelemetry Collector 0.164.0, running in Docker on a laptop. The full lab, including every configuration file, is available in the [`opensearch-prometheus-lab` repository](https://github.com/mohiadeen-ameer/opensearch-prometheus-lab).
 
@@ -24,9 +22,9 @@ All results come from OpenSearch 3.9.0, OpenSearch Dashboards 3.9.0, Data Preppe
 
 The application is a two-service shop written in Go and instrumented with the OpenTelemetry SDK. The `checkout` service calls `payments`, which calls a simulated card provider. A load generator sends steady traffic, and the `payments` service exposes a `/chaos` endpoint that adds latency and errors on demand.
 
-The following diagram shows how each signal travels. The OpenTelemetry Collector sends traces and logs to Data Prepper, which writes them to OpenSearch. Metrics go directly to Prometheus through its native OpenTelemetry Protocol (OTLP) receiver. Data Prepper also derives rate, error, and duration (RED) metrics from spans and remote-writes them to Prometheus for the application performance monitoring (APM) pages.
+The following diagram shows how each signal travels. The OpenTelemetry Collector sends traces and logs to Data Prepper, which writes them to OpenSearch. Metrics go directly to Prometheus through its native OpenTelemetry Protocol (OTLP) receiver. Data Prepper also derives rate, error, and duration (RED) metrics from spans and remote-writes them to Prometheus for the application performance monitoring (APM) pages. Prometheus sends firing alerts to `Alertmanager`, and OpenSearch reads both for the alerting pages.
 
-![Architecture of the lab: the OpenTelemetry Collector sends traces and logs through Data Prepper to OpenSearch, and metrics to Prometheus. OpenSearch Dashboards queries OpenSearch, which forwards PromQL to Prometheus.](/assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/architecture.png){:class="img-centered"}
+![Architecture of the lab: the OpenTelemetry Collector sends traces and logs through Data Prepper to OpenSearch, and metrics to Prometheus, which sends alerts to Alertmanager. OpenSearch Dashboards queries OpenSearch, which forwards PromQL to Prometheus and reads alerts from Alertmanager.](/assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/architecture.png){:class="img-centered"}
 
 Connecting Prometheus takes one API call to OpenSearch Dashboards:
 
@@ -89,7 +87,7 @@ The following chart shows p95 latency for both services jumping from about 50 ms
 
 ![PromQL query in the builder and a line chart showing p95 latency rising from about 50 ms to about 750 ms for both services.](/assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/promql-p95-latency.png)
 
-The `service_name` label exists because Prometheus is configured to promote the OpenTelemetry `service.name` resource attribute to a label (`otlp.promote_resource_attributes` in `prometheus.yml`). The same `service.name` value is stored on every span and log in OpenSearch. That shared key is what lets you move between signals, so plan for it from the start.
+The `service_name` label exists because Prometheus is configured to promote the OpenTelemetry `service.name` resource attribute to a label (`otlp.promote_resource_attributes` in `prometheus.yml`). The same `service.name` value is stored on every span and log in OpenSearch. That shared key is what lets you move between signals, so set it up from the start.
 
 ### Step 2: Check which alerts fired
 
@@ -117,7 +115,7 @@ In this lab, with one injected fault, it took four steps to get from a latency s
 
 ## Controlling who can query Prometheus
 
-The Security plugin was disabled in the lab, so I tested access separately on a single OpenSearch 3.9.0 node with the plugin enabled. I created a data connection with `"allowedRoles": ["promreaders"]` and sent the same PromQL query through the API as three users.
+The Security plugin is disabled in the main lab, so I tested access separately on a second OpenSearch 3.9.0 node with the plugin enabled. The `security-test` folder in the lab repository starts that node and runs the same test. I created a data connection with `"allowedRoles": ["promreaders"]` and sent the same PromQL query through the API as three users.
 
 | User | Direct query permissions | In `promreaders` | Result |
 | :--- | :--- | :--- | :--- |
@@ -129,13 +127,13 @@ So two layers apply: the cluster permission decides whether you can call the API
 
 This doesn't protect Prometheus itself. Anyone who can reach its HTTP port can still query it directly, so restrict network access too. I only tested the API, not OpenSearch Dashboards with security enabled, so tenants and workspace permissions remain open questions for me.
 
-## What to plan for during setup
+## Two setup steps that cost me time
 
-Setup was straightforward once I knew the steps, but there are several: the data connection, an encryption key, an Observability workspace, the `explore` settings, and the datasets. Two details cost me the most time.
+Setup was straightforward once I knew the steps, but there are several: the data connection, an encryption key, an Observability workspace, the `explore` settings, and the datasets. These two cost me the most time.
 
 ### Creating alert rules requires a Prometheus backend with a ruler API
 
-OpenSearch 3.9 has a form for building an alert rule from a PromQL query without writing YAML. When I submitted it against open-source Prometheus, the form reported that the rule's configuration was invalid and asked me to correct the highlighted fields. The rule was fine. The OpenSearch log showed the real reason: `Ruler request failed with code: 404`. Open-source Prometheus loads rules from files and has no API for writing them.
+OpenSearch 3.9 has a form for building an alert rule from a PromQL query without writing YAML. I tested this on OpenSearch 3.9.0: when I submitted the form against open-source Prometheus, the form reported that the rule's configuration was invalid and asked me to correct the highlighted fields. The rule was fine. The OpenSearch log showed the real reason: `Ruler request failed with code: 404`. Open-source Prometheus loads rules from files and has no API for writing them.
 
 Reading rules works: the **Alerts** and **Rules** tabs showed the lab's file-based rules. To create rules from OpenSearch Dashboards, use a backend that provides a ruler API, such as Cortex, Grafana Mimir, or Amazon Managed Service for Prometheus, and set it as `prometheus.ruler.uri` on the data source. The [OpenSearch Observability Stack](https://github.com/opensearch-project/observability-stack) uses Cortex this way. I read that configuration but didn't test a ruler-enabled backend myself.
 
@@ -153,7 +151,7 @@ This was a small test, so treat these results as a starting point. The lab runs 
 
 The surprise for me was how little changes on the Prometheus side. OpenSearch doesn't store these metrics; it forwards PromQL to Prometheus and shows the results next to your logs and traces. My Prometheus rules kept working, and I didn't move any data. I think that's the right starting point, because you can try it without committing to a migration. If you already run OpenSearch Dashboards for logs and traces, it also means one less UI to run for metrics.
 
-If you want metrics stored in OpenSearch itself, the [Time-Series Database plugin](https://github.com/opensearch-project/time-series-db) and the `index_type: tsdb` sink option in [Data Prepper 2.16](https://opensearch.org/blog/data-prepper-2-16/) are worth looking at. I haven't tested that option yet.
+If you want a single store instead, the [Time-Series Database plugin](https://github.com/opensearch-project/time-series-db) and the `index_type: tsdb` sink option in [Data Prepper 2.16](https://opensearch.org/blog/data-prepper-2-16/) store metrics in OpenSearch itself. I haven't tested that option yet.
 
 ## Next steps
 
@@ -169,7 +167,7 @@ curl "localhost:8081/chaos?latency_ms=700&error_rate=0.25"
 
 Then open `http://localhost:5601`, select the **Shop observability** workspace, and follow the same four steps.
 
-Before you adopt the integration, check the following:
+Before you adopt the integration:
 
 - If you want to create alert rules from OpenSearch Dashboards, make sure your Prometheus backend provides a ruler API.
 - Make sure that `service.name` is promoted to a Prometheus label so that you can correlate metrics with traces and logs.

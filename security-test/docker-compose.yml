@@ -1,0 +1,22 @@
+# A second OpenSearch node with the Security plugin enabled, for testing who can
+# query the Prometheus data connection. It joins the main lab's network so it can
+# reach the lab's Prometheus. Start the main lab first.
+name: prom-lab-security
+
+services:
+  opensearch-secure:
+    image: opensearchproject/opensearch:3.9.0
+    container_name: opensearch-secure
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=Lab_Test_Pass_123!
+      - plugins.query.datasources.encryption.masterkey=0123456789abcdefABCDEFgh
+    ports:
+      - "9201:9200"
+    networks: [lab]
+
+networks:
+  lab:
+    name: prom-lab_default
+    external: true
