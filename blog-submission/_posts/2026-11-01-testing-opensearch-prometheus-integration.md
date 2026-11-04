@@ -133,7 +133,7 @@ Setup was straightforward once I knew the steps, but there are several: the data
 
 ### Creating alert rules requires a Prometheus backend with a ruler API
 
-OpenSearch 3.9 has a form for building an alert rule from a PromQL query without writing YAML. I tested this on OpenSearch 3.9.0: when I submitted the form against open-source Prometheus, the form reported that the rule's configuration was invalid and asked me to correct the highlighted fields. The rule was fine. The OpenSearch log showed the real reason: `Ruler request failed with code: 404`. Open-source Prometheus loads rules from files and has no API for writing them.
+OpenSearch 3.9 has a form for building an alert rule from a PromQL query without writing YAML. When I submitted the form against open-source Prometheus, the form reported that the rule's configuration was invalid and asked me to correct the highlighted fields. The rule was fine. The OpenSearch log showed the real reason: `Ruler request failed with code: 404`. Open-source Prometheus loads rules from files and has no API for writing them.
 
 Reading rules works: the **Alerts** and **Rules** tabs showed the lab's file-based rules. To create rules from OpenSearch Dashboards, use a backend that provides a ruler API, such as Cortex, Grafana Mimir, or Amazon Managed Service for Prometheus, and set it as `prometheus.ruler.uri` on the data source. The [OpenSearch Observability Stack](https://github.com/opensearch-project/observability-stack) uses Cortex this way. I read that configuration but didn't test a ruler-enabled backend myself.
 
@@ -145,7 +145,7 @@ Datasets created using the API start with an empty field list. The fix is to loa
 
 ## What I didn't test
 
-This was a small test, so treat these results as a starting point. The lab runs a single OpenSearch node and one Prometheus server, with one injected fault and steady, moderate traffic. I didn't run a performance benchmark. I didn't test authentication to Prometheus, high-availability or federated Prometheus setups, a ruler-enabled backend, PromQL dashboards, or the service-level objective catalog.
+This was a small test, so treat these results as a starting point. The lab runs a single OpenSearch node and one Prometheus server, with one injected fault and steady, moderate traffic. This post doesn't cover performance. I didn't test authentication to Prometheus, high-availability or federated Prometheus setups, a ruler-enabled backend, PromQL dashboards, or the service-level objective catalog.
 
 ## One place to investigate, two places to store
 

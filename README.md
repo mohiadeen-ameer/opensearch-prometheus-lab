@@ -93,7 +93,6 @@ curl -s -X POST localhost:9200/_plugins/_directquery/_query/lab_prometheus -H 'C
 | `config/alertmanager.yml` | a small routing tree so the Routing tab has something to show |
 | `config/opensearch_dashboards.yml` | turns on workspaces, the explore plugin (logs/traces/metrics) and Alertmanager view |
 | `setup.sh` | Prometheus data source, workspace, datasets (with field refresh), trace-to-logs and APM correlations |
-| `benchmark/` | `run.py` measures the lab at given request rates (`benchmark/run.py 100`); `results.json` is the latest run |
 | `security-test/` | a second OpenSearch node with the Security plugin on; `security-test/run.sh` checks who can query the Prometheus data connection |
 | `app/` | the Go demo: `main.go` (3 roles), `telemetry.go` (OTel SDK setup) |
 
