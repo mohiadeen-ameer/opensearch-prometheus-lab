@@ -24,7 +24,7 @@ The application is a two-service shop written in Go and instrumented with the Op
 
 The following diagram shows how each signal travels. The OpenTelemetry Collector sends traces and logs to Data Prepper, which writes them to OpenSearch. Metrics go directly to Prometheus through its native OpenTelemetry Protocol (OTLP) receiver. Data Prepper also derives rate, error, and duration (RED) metrics from spans and remote-writes them to Prometheus for the application performance monitoring (APM) pages. Prometheus sends firing alerts to `Alertmanager`, and OpenSearch reads both for the alerting pages.
 
-![Architecture of the lab: the OpenTelemetry Collector sends traces and logs through Data Prepper to OpenSearch, and metrics to Prometheus, which sends alerts to Alertmanager. OpenSearch Dashboards queries OpenSearch, which forwards PromQL to Prometheus and reads alerts from Alertmanager.](/assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/architecture.png){:class="img-centered"}
+![Architecture of the lab: the OpenTelemetry Collector sends traces and logs through Data Prepper to OpenSearch, and metrics to Prometheus, which sends firing alerts to its alert router. OpenSearch Dashboards queries OpenSearch, which forwards PromQL to Prometheus and reads alerts and routing from the alert router.](/assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/architecture.png){:class="img-centered"}
 
 Connecting Prometheus takes one API call to OpenSearch Dashboards:
 
