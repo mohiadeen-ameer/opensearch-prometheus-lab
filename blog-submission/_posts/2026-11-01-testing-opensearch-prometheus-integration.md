@@ -12,7 +12,7 @@ meta_description: A hands-on test of the OpenSearch Prometheus integration. Foll
 excerpt: OpenSearch Dashboards can query Prometheus with PromQL next to logs and traces stored in OpenSearch. I built a small lab, broke a service, and tried to find the cause from one UI. Here is how the investigation went, how queries and access control work, and two setup steps that cost me time.
 ---
 
-On a server monitoring platform for AI data centers that I worked on, much of every incident went to moving between tools: you spot a latency spike in one place, then go looking for the matching trace and error message in another. OpenSearch Dashboards can now query Prometheus directly with PromQL, next to logs and traces stored in OpenSearch, and you don't have to move your metrics to use it. To see how well that works, I built a small lab that mimics a common setup: Prometheus for metrics, and OpenSearch for logs and traces.
+I've worked on a server monitoring platform for AI data centers. During incidents, much of the time went to moving between tools. You spot a latency spike in one place, then go looking for the matching trace and error message in another. OpenSearch Dashboards can now query Prometheus directly with PromQL, next to logs and traces stored in OpenSearch, and you don't have to move your metrics to use it. To see how well that works, I built a small lab that mimics a common setup: Prometheus for metrics, and OpenSearch for logs and traces.
 
 The [OpenSearch 3.7 release post](https://opensearch.org/blog/explore-opensearch-3-7/) covers what the feature is. In this post, I'll focus on using it: I'll break a service on purpose and follow the fault from a PromQL query to a log line, trace how the query reaches Prometheus, test who can run it when the Security plugin is enabled, and describe two setup steps that cost me time.
 
@@ -24,7 +24,7 @@ The application is a two-service shop written in Go and instrumented with the Op
 
 The following diagram shows how each signal travels. The OpenTelemetry Collector sends traces and logs to Data Prepper, which writes them to OpenSearch. Metrics go directly to Prometheus through its native OpenTelemetry Protocol (OTLP) receiver. Data Prepper also derives rate, error, and duration (RED) metrics from spans and remote-writes them to Prometheus for the application performance monitoring (APM) pages. Prometheus sends firing alerts to `Alertmanager`, and OpenSearch reads both for the alerting pages.
 
-![Architecture of the lab: the OpenTelemetry Collector sends traces and logs through Data Prepper to OpenSearch, and metrics to Prometheus, which sends firing alerts to its alert router. OpenSearch Dashboards queries OpenSearch, which forwards PromQL to Prometheus and reads alerts and routing from the alert router.](/assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/architecture.png){:class="img-centered"}
+![Architecture of the lab: the OpenTelemetry Collector sends traces and logs through Data Prepper to OpenSearch, and metrics to Prometheus, which sends firing alerts to Alertmanager. OpenSearch Dashboards queries OpenSearch, which forwards PromQL to Prometheus and reads alerts and routing from Alertmanager.](/assets/media/blog-images/2026-11-01-testing-opensearch-prometheus-integration/architecture.png){:class="img-centered"}
 
 Connecting Prometheus takes one API call to OpenSearch Dashboards:
 
